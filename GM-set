@@ -1,0 +1,113 @@
+#!/bin/bash
+# File Name: GM-set
+# Version: 1.0 (matches group-management 1.0)
+# Purpose:  Backend for group-management, acually does the majority of the
+#           work
+# Authors: Dave and minor modifications by anticapitalista
+# Acknowledgements: AntiX forum users for suggestions, testing, and input
+# Special Acknowledgements: anticapitalista for testing, suggestions, input
+
+# Copyright (C) Tuesday, Feb. 7, 2011  by Dave / david.dejong02@gmail.com
+# License: gplv2
+# This file is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#################################################################################################################################################
+
+if [[ $UID != "0" ]]; then
+ gksu group-management &
+ exit 1 ;
+fi
+
+function password {
+	GROUP=$2
+	PASSWORD=$3
+	entry="$(mkpasswd -m sha-512 "$PASSWORD" | sed -r 's/([$/])/\\\1/g')"
+        sed -ir "s/^$GROUP:[^:]\+/$GROUP:$entry/" /etc/gshadow &&
+	yad --title="Group-Management" --image="info" --text="Password Set"
+}
+
+function addGroup {
+	GROUP=$2
+	USERLIST=$3
+	groupadd $GROUP
+	GROUPLINE=$(cat /etc/group |grep "^$GROUP:")
+	sed -ir "s/^$GROUPLINE/$GROUPLINE$USERLIST/" /etc/group &&	
+	yad --title="Group-Management" --image="info" --text="Group Added"
+}
+
+function users2group {
+	GROUP=$2
+	USERLIST=$3
+	GROUPLINE=$(cat /etc/group |grep "^$GROUP:")
+	sed -ir "s/^$GROUPLINE/$GROUPLINE$USERLIST/" /etc/group &&	
+	yad --title="Group-Management" --image="info" --text="Users Added To Group"
+}
+
+function removeGroup {
+	GROUP=$2
+	COMPLETE=$3
+	if [ "$COMPLETE" = "False" ]; then
+	    cat /etc/group | grep "^$GROUP:" >> /etc/groups.bk &&
+	    cat /etc/gshadow | grep "^$GROUP:" >> /etc/groups.bk &&
+	    groupdel $GROUP &&
+	    yad --title="Group-Management" --image="info" --text="Group Removed"
+	elif [ "$COMPLETE" = "True" ]; then
+	    sed -ir "s/^$GROUP:.*//" /etc/groups.bk &&	
+	    groupdel $GROUP &&
+	    yad --title="Group-Management" --image="info" --text="Group Completely Removed"
+	else 
+	    echo "$COMPLETE IS NOT A VALID OPTION";
+	fi
+}
+
+function recoverGroup {
+	GROUP=$2
+	cat /etc/groups.bk | grep "^$GROUP:" | head -1 >> /etc/group &&
+	cat /etc/groups.bk | grep "^$GROUP:" | tail -1 >> /etc/gshadow &&
+    sed -ir "s/^$GROUP:.*//" /etc/groups.bk &&	
+	yad --title="Group-Management" --image="info" --text="Group Recovered"
+}
+
+function help {
+	echo "Useage:"
+	echo "-p | -P      GM-set -p GROUP PASSWORD"
+	echo "-a | -A      GM-set -a GROUP COMMA,SEPARATED,USER,LIST"
+	echo "-ug | -UG    GM-set -ug GROUP COMMA,SEPARATED,USER,LIST"
+	echo "-rm | -RM    GM-set -rm GROUP TRUE '< COMPLETELY REMOVE TRUE/FALSE'"
+	echo "-rc | -RC    GM-set -rc GROUP 'NEEDS TO BE A GROUP THAT WAS *NOT* COMPLETELY REMOVED"
+	echo "-h | --help  THIS HELP DIALOG"
+}
+
+case $1 in
+    -p|-P)
+        password $@
+        ;;
+    -a|-A)
+        addGroup $@
+        ;;
+    -ug|-UG)
+        users2group $@
+        ;;
+    -rm|-RM)
+        removeGroup $@
+        ;;
+    -rc|-RC)
+        recoverGroup $@
+        ;;
+    -h|-H|--help|--HELP|*)
+        help $@
+        ;;
+esac
+    
+

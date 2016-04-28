@@ -1,0 +1,638 @@
+#!/usr/bin/env python
+# File Name: group-management
+# Version: 1.0 (matches group-management 2.0)
+# Purpose:  GROUPS ( adding, removing, recovering, and repairing)
+#			PASSWORDS ( changing group passwords )
+# Authors: Dave and minor modifications by anticapitalista
+# Acknowledgements: AntiX forum groups for suggestions, testing, and input
+# Special Acknowledgements: anticapitalista for testing, suggestions, input
+
+# Copyright (C) Tuesday, Feb. 7, 2011  by Dave / david.dejong02@gmail.com
+# License: gplv2
+# This file is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#################################################################################################################################################
+
+import pygtk
+pygtk.require('2.0')
+import gtk
+import re
+import os
+import sys
+import gettext
+gettext.install("group-management", "/usr/share/locale")
+from desktop_tool import DesktopToolWidget
+from desktop_tool import get_icon as get_icon
+
+##STRINGS
+
+not1 = _("Notice!\n\
+        All of the users in this group will be \n\
+        logged, unless completely remove\n\
+        is checked.")
+not2 = _("Notice!\n\
+        A group can only be recovered if the group\n\
+        has not been completely removed!")
+
+BACKGROUND_SCRIPT="./GM-set"
+
+class Error:
+    def __init__(self, error):
+       cmdstring = "yad --image=\"error\"\
+       --title=\"group-management error\"\
+       --text=\"group-management has run into an error,\
+       \nplease rerun and correct the following error!\
+       \n\n%s\n\"\
+       --button=\"gtk-ok:0\"" % (error)
+       os.system(cmdstring) 
+
+class Password:        
+    
+    def applyPassword(self, widget):
+        model = self.combobox.get_model()
+        index = self.combobox.get_active()			
+        group = model[index][0]
+        
+        password1 = self.passwd1.get_text()
+        
+        password2 = self.passwd2.get_text()
+        
+        if re.search(r' ', password1):
+            sys.exit(Error(_("The password cannot contain spaces")))
+        elif ( password1 == "" ):
+            sys.exit(Error(_("You need to enter a password")))
+        elif (password1 != password2):
+            sys.exit(Error(_("First and second password must be identical")))
+        else:
+            password=password1
+            
+        if (group == nogrpsel):
+            sys.exit(Error(_("You must choose a group")))
+        else:
+            cmdstring = "%s -p %s %s" % ((BACKGROUND_SCRIPT), (group), (password))
+            #print cmdstring
+            os.system(cmdstring)
+
+    def __init__(self):
+        self.frame = gtk.Frame()
+        self.frame.set_border_width(10)
+        self.frame.show()
+
+        vbox = gtk.VBox()
+        self.frame.add(vbox)
+        vbox.show()
+
+        label = gtk.Label(_("Password Management"))
+        vbox.pack_start(label)
+        label.show()
+        
+        frame = gtk.Frame(_("Choose group"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        self.combobox = gtk.combo_box_new_text()
+        frame.add(self.combobox)
+        self.combobox.show()
+        self.combobox.append_text(_("No group Selected:"))
+    
+        for line in open("/etc/group", "r").xreadlines():
+            if re.search(r':x:1[0-9][0-9][0-9]', line):
+                pieces = line.split(':')
+                self.combobox.append_text(pieces[0])
+        
+        #combobox.connect('changed', self.changed_cb)
+        self.combobox.set_active(0)
+        
+        frame = gtk.Frame(_("group Password"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        passbox = gtk.VBox()
+        frame.add(passbox)
+        passbox.show()
+        
+        self.passwd1 = gtk.Entry()
+        self.passwd1.set_text(_("password"))
+        passbox.pack_start(self.passwd1)
+        self.passwd1.show()
+        
+        self.passwd2 = gtk.Entry()
+        self.passwd2.set_text(_("password again"))
+        passbox.pack_start(self.passwd2)
+        self.passwd2.show()
+        
+        buttonbox = gtk.HButtonBox()
+        vbox.pack_start(buttonbox)
+        buttonbox.show()
+        
+        okbutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Apply'), 'dialog-ok', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        okbutton.add(icon_button)
+        okbutton.connect("clicked", self.applyPassword)
+        okbutton.set_size_request(100,50)
+        buttonbox.add(okbutton)
+        okbutton.show()
+        
+        closebutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Close'), 'dialog-close', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        closebutton.add(icon_button)
+        closebutton.connect("clicked", lambda w: gtk.main_quit())
+        closebutton.set_size_request(100,50)
+        buttonbox.add(closebutton)
+        closebutton.show()
+
+        self.label = gtk.Label(_("Passwords"))
+
+class Add:
+    def applyNewgroup(self, widget):
+        group = self.name.get_text()
+            
+        if re.search(r' ', group):
+            sys.exit(Error(_("The groupname cannot contain spaces")))
+        elif ( group == "" ):
+            sys.exit(Error(_("You need to enter a groupname")))
+        else:
+            Users = ""
+            active = self.rootCHECKBUTTON.get_active()	
+            if (active == True):
+                Users=("root"+","+Users)
+            
+            for line in open("/etc/passwd", "r").xreadlines():
+               if re.search(r':x:1[0-9][0-9][0-9]', line):
+                    pieces = line.split(':')
+                    #VARIABLE=("active=self."+pieces[0]+"CHECKBUTTON.get_active()")
+                    #exec VARIABLE
+                    var=self
+                    VARIABLE=(pieces[0]+"CHECKBUTTON")
+                    active = var.VARIABLE.get_active()
+                    if (active == True):
+                       Users=(pieces[0]+","+Users)
+                       
+            cmdstring = "%s -a %s '%s'" % ((BACKGROUND_SCRIPT), (group), (Users))
+            #print cmdstring
+            os.system(cmdstring)
+            
+            password1 = self.passwd1.get_text()
+            password2 = self.passwd2.get_text()	
+        
+            active = self.groupPassEnable.get_active()
+            if (active == True):
+                if re.search(r' ', password1):
+                    sys.exit(Error(_("The password cannot contain spaces")))
+                elif ( password1 == "" ):
+                    sys.exit(Error(_("You need to enter a password")))
+                elif (password1 != password2):
+                    sys.exit(Error(_("First and second password must be identical")))
+                else:
+                    password=password1
+                    cmdstring = "%s -p %s %s" % ((BACKGROUND_SCRIPT), (group), (password))
+                    #print cmdstring
+                    os.system(cmdstring)
+                
+            
+            
+    def toggle(self, widget):
+        if self.PassFrame.flags() & gtk.VISIBLE:
+            self.PassFrame.hide()
+        else:
+            self.PassFrame.show()
+            
+    def __init__(self):
+        self.frame = gtk.Frame()
+        self.frame.set_border_width(10)
+        self.frame.show()
+
+        vbox = gtk.VBox()
+        self.frame.add(vbox)
+        vbox.show()
+
+        label = gtk.Label(_("Add groups"))
+        vbox.pack_start(label)
+        label.show()
+        
+        frame = gtk.Frame(_("Enter groupname"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        self.name = gtk.Entry()
+        self.name.set_text("antiXDemo")
+        frame.add(self.name)
+        self.name.show()
+        
+        self.PassFrame = gtk.Frame(_("Group Password"))
+        self.PassFrame.hide()
+        
+        self.groupPassEnable = gtk.CheckButton("Set Password")
+        self.groupPassEnable.connect("toggled", self.toggle)
+        self.groupPassEnable.show()
+        
+        vbox.pack_start(self.groupPassEnable)
+        vbox.pack_start(self.PassFrame)
+        
+        passbox = gtk.VBox()
+        self.PassFrame.add(passbox)
+        passbox.show()
+        
+        self.passwd1 = gtk.Entry()
+        self.passwd1.set_text(_("password"))
+        passbox.pack_start(self.passwd1)
+        self.passwd1.show()
+        
+        self.passwd2 = gtk.Entry()
+        self.passwd2.set_text(_("password again"))
+        passbox.pack_start(self.passwd2)
+        self.passwd2.show()
+        
+        frame = gtk.Frame(_("Users"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        sw = gtk.ScrolledWindow()
+        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        frame.add(sw)
+        sw.show()
+        
+        userbox = gtk.VBox()
+        sw.add_with_viewport(userbox)
+        userbox.show()
+        
+        self.rootCHECKBUTTON = gtk.CheckButton("root")
+        userbox.pack_start(self.rootCHECKBUTTON)
+        self.rootCHECKBUTTON.show()
+        
+        for line in open("/etc/passwd", "r").xreadlines():
+            if re.search(r':x:1[0-9][0-9][0-9]', line):
+                pieces = line.split(':')
+                var=self
+                VARIABLE=(pieces[0]+"CHECKBUTTON")
+                var.VARIABLE = gtk.CheckButton(pieces[0])
+                userbox.pack_start(var.VARIABLE)
+                var.VARIABLE.show()
+                        
+        buttonbox = gtk.HButtonBox()
+        vbox.pack_start(buttonbox)
+        buttonbox.show()
+        
+        okbutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Apply'), 'dialog-ok', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        okbutton.add(icon_button)
+        okbutton.connect("clicked", self.applyNewgroup)
+        okbutton.set_size_request(100,50)
+        buttonbox.add(okbutton)
+        okbutton.show()
+        
+        closebutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Close'), 'dialog-close', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        closebutton.add(icon_button)
+        closebutton.connect("clicked", lambda w: gtk.main_quit())
+        closebutton.set_size_request(100,50)
+        buttonbox.add(closebutton)
+        closebutton.show()
+
+        self.label = gtk.Label(_("Add group"))
+
+class Users2Groups:
+    def applyUsers2Groups(self, widget):
+        model = self.combobox.get_model()
+        index = self.combobox.get_active()			
+        group = model[index][0]
+        
+        if (group == nogrpsel):
+            sys.exit(Error(_("You must choose a group")))
+        else:
+            Users = ""
+            active = self.rootGCHECKBUTTON.get_active()	
+            if (active == True):
+                Users=("root"+","+Users) 
+                          
+            for line in open("/etc/passwd", "r").xreadlines():
+               if re.search(r':x:1[0-9][0-9][0-9]', line):
+                    pieces = line.split(':')
+                    var=self
+                    VARIABLE=(pieces[0]+"GCHECKBUTTON")
+                    active = var.VARIABLE.get_active()
+                    if (active == True):
+                       Users=(pieces[0]+","+Users)
+                       
+            cmdstring = "%s -ug %s '%s'" % ((BACKGROUND_SCRIPT), (group), (Users))
+            #print cmdstring
+            os.system(cmdstring)
+            
+    def __init__(self):
+        self.frame = gtk.Frame()
+        self.frame.set_border_width(10)
+        self.frame.show()
+
+        vbox = gtk.VBox()
+        self.frame.add(vbox)
+        vbox.show()
+
+        label = gtk.Label(_("Users to Group"))
+        vbox.pack_start(label)
+        label.show()
+        
+        frame = gtk.Frame(_("You must choose a group"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        self.combobox = gtk.combo_box_new_text()
+        frame.add(self.combobox)
+        self.combobox.show()
+        self.combobox.append_text(_("No group Selected:"))
+    
+        for line in open("/etc/group", "r").xreadlines():
+            if re.search(r':x:1[0-9][0-9][0-9]', line):
+                pieces = line.split(':')
+                self.combobox.append_text(pieces[0])
+        
+        #combobox.connect('changed', self.changed_cb)
+        self.combobox.set_active(0)
+        
+        frame = gtk.Frame(_("Users"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        sw = gtk.ScrolledWindow()
+        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
+        frame.add(sw)
+        sw.show()
+        
+        userbox = gtk.VBox()
+        sw.add_with_viewport(userbox)
+        userbox.show()
+        
+        self.rootGCHECKBUTTON = gtk.CheckButton("root")
+        userbox.pack_start(self.rootGCHECKBUTTON)
+        self.rootGCHECKBUTTON.show()
+        
+        for line in open("/etc/passwd", "r").xreadlines():
+            if re.search(r':x:1[0-9][0-9][0-9]', line):
+                pieces = line.split(':')
+                var=self
+                VARIABLE=(pieces[0]+"GCHECKBUTTON")
+                var.VARIABLE = gtk.CheckButton(pieces[0])
+                userbox.pack_start(var.VARIABLE)
+                var.VARIABLE.show()
+        
+        buttonbox = gtk.HButtonBox()
+        vbox.pack_start(buttonbox)
+        buttonbox.show()
+        
+        okbutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Apply'), 'dialog-ok', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        okbutton.add(icon_button)
+        okbutton.connect("clicked", self.applyUsers2Groups)
+        okbutton.set_size_request(100,50)
+        buttonbox.add(okbutton)
+        okbutton.show()
+        
+        closebutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Close'), 'dialog-close', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        closebutton.add(icon_button)
+        closebutton.connect("clicked", lambda w: gtk.main_quit())
+        closebutton.set_size_request(100,50)
+        buttonbox.add(closebutton)
+        closebutton.show()
+
+        self.label = gtk.Label(_("Repair group"))
+
+class Remove:
+    def applyRemove(self, widget):
+        model = self.combobox.get_model()
+        index = self.combobox.get_active()			
+        group = model[index][0]
+        
+        completeRemove = self.complete.get_active()			
+        
+        if (group == nogrpsel):
+            sys.exit(Error(_("You must choose a group")))
+        else:
+            cmdstring = "%s -rm %s %s " % ((BACKGROUND_SCRIPT), (group),(completeRemove))
+            #print (cmdstring)
+            os.system(cmdstring)
+            
+    def __init__(self):
+        self.frame = gtk.Frame()
+        self.frame.set_border_width(10)
+        self.frame.show()
+
+        vbox = gtk.VBox()
+        self.frame.add(vbox)
+        vbox.show()
+
+        label = gtk.Label(_("group Removal"))
+        vbox.pack_start(label)
+        label.show()
+
+        label = gtk.Label(not1)
+        vbox.pack_start(label)
+        label.show()
+        
+        frame = gtk.Frame(_("Choose group"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        self.combobox = gtk.combo_box_new_text()
+        frame.add(self.combobox)
+        self.combobox.show()
+        self.combobox.append_text(_("No group Selected:"))
+    
+        for line in open("/etc/group", "r").xreadlines():
+            if re.search(r':x:1[0-9][0-9][0-9]', line):
+                pieces = line.split(':')
+                self.combobox.append_text(pieces[0])
+        
+        #combobox.connect('changed', self.changed_cb)
+        self.combobox.set_active(0)
+        
+        frame = gtk.Frame(_("Completely Remove group?"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        self.complete = gtk.CheckButton()
+        self.complete.set_label(_("Completely Remove group"))
+        frame.add(self.complete)
+        self.complete.show()
+        
+        buttonbox = gtk.HButtonBox()
+        vbox.pack_start(buttonbox)
+        buttonbox.show()
+        
+        okbutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Apply'), 'dialog-ok', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        okbutton.add(icon_button)
+        okbutton.connect("clicked", self.applyRemove)
+        okbutton.set_size_request(100,50)
+        buttonbox.add(okbutton)
+        okbutton.show()
+        
+        closebutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Close'), 'dialog-close', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        closebutton.add(icon_button)
+        closebutton.connect("clicked", lambda w: gtk.main_quit())
+        closebutton.set_size_request(100,50)
+        buttonbox.add(closebutton)
+        closebutton.show()
+
+        self.label = gtk.Label(_("Remove group"))
+        
+class Recover:
+    def applyRecover(self, widget):
+        model = self.combobox.get_model()
+        index = self.combobox.get_active()			
+        group = model[index][0]
+        
+        if (group == nogrpsel):
+            sys.exit(Error(_("You must choose a group")))
+        elif (group == _("No group Recoverable:")):
+            sys.exit(Error(_("There are no records of a recoverable group.")))
+        else:
+            cmdstring = "%s -rc %s" % ((BACKGROUND_SCRIPT), (group))
+            #print (cmdstring)
+            os.system(cmdstring)
+            
+    def __init__(self):
+        self.frame = gtk.Frame()
+        self.frame.set_border_width(10)
+        self.frame.show()
+
+        vbox = gtk.VBox()
+        self.frame.add(vbox)
+        vbox.show()
+
+        label = gtk.Label(_("Recover group"))
+        vbox.pack_start(label)
+        label.show()
+        label = gtk.Label(not2)
+        vbox.pack_start(label)
+        label.show()
+        
+        frame = gtk.Frame(_("Select Group"))
+        vbox.pack_start(frame)
+        frame.show()
+        
+        self.combobox = gtk.combo_box_new_text()
+        frame.add(self.combobox)
+        self.combobox.show()
+        if not os.path.isfile("/etc/groups.bk"):
+			self.combobox.append_text(_("No group Recoverable:"))
+        else:
+            self.combobox.append_text(_("No group Selected:"))
+            for line in open("/etc/groups.bk", "r").xreadlines():
+                if re.search(r':x:1[0-9][0-9][0-9]', line):
+                    pieces = line.split(':')
+                    self.combobox.append_text(pieces[0])
+        
+        #combobox.connect('changed', self.changed_cb)
+        self.combobox.set_active(0)
+        
+        buttonbox = gtk.HButtonBox()
+        vbox.pack_start(buttonbox)
+        buttonbox.show()
+        
+        okbutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Apply'), 'dialog-ok', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        okbutton.add(icon_button)
+        okbutton.connect("clicked", self.applyRecover)
+        okbutton.set_size_request(100,50)
+        buttonbox.add(okbutton)
+        okbutton.show()
+        
+        closebutton = gtk.Button()
+        icon_button = DesktopToolWidget(_('Close'), 'dialog-close', 30, gtk.ORIENTATION_HORIZONTAL, wrap = 7)
+        closebutton.add(icon_button)
+        closebutton.connect("clicked", lambda w: gtk.main_quit())
+        closebutton.set_size_request(100,50)
+        buttonbox.add(closebutton)
+        closebutton.show()
+        
+        self.label = gtk.Label(_("Recover group"))       
+        
+
+class NotebookExample:
+	
+    def make_icon(self,icon,label):
+		#Code from lagopus's script from #START# marker to #END# marker
+		########START##########
+        self.tab_box = gtk.HBox(False, 2)
+        self.tab_box.set_spacing(8)
+        tab_label = gtk.Label(label)
+
+        pixbuf = get_icon(icon, 48)
+        tab_icon = gtk.Image()
+        tab_icon.set_from_pixbuf(pixbuf)
+                
+        tab_icon.set_size_request(-1, 60)
+        self.tab_box.pack_start(tab_icon, False)
+        self.tab_box.pack_start(tab_label, False)
+
+        # needed, otherwise even calling show_all on the notebook won't
+        # make the hbox contents appear.
+        self.tab_box.show_all()
+        ###########END##########
+
+    def delete(self, widget, event=None):
+        gtk.main_quit()
+        return False
+
+    def __init__(self):
+        ROOTCHECK=os.getuid()
+        if ( ROOTCHECK != 0 ):
+            sys.exit(Error(_("You MUST be root to use this application!")))
+            
+        window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        window.set_title("group-Management")
+        window.connect("destroy", lambda w: gtk.main_quit())
+        window.set_border_width(10)
+
+        table = gtk.Table(2,3,False)
+        window.add(table)
+
+        # Create a new notebook, place the position of the tabs
+        self.notebook = gtk.Notebook()
+        self.notebook.set_tab_pos(gtk.POS_LEFT)
+        self.notebook.set_size_request(500,400)
+        table.attach(self.notebook, 0,3,0,1, xoptions=gtk.FILL, yoptions=gtk.FILL)
+        self.notebook.show()
+        
+        #Start Password Class
+        self.make_icon("changes-allow",_("Password"))
+        self.notebook.append_page(Password().frame, self.tab_box)
+        
+        #Start add/repair Class
+        self.make_icon("list-add",_("Add Group"))
+        self.notebook.append_page(Add().frame, self.tab_box)
+        self.make_icon("edit-undo",_("Users to Group"))
+        self.notebook.append_page(Users2Groups().frame, self.tab_box)
+        
+        #Start remove/recover Class
+        self.make_icon("list-remove",_("Remove"))
+        self.notebook.append_page(Remove().frame, self.tab_box)
+        self.make_icon("edit-redo",_("Recover"))
+        self.notebook.append_page(Recover().frame, self.tab_box)
+        
+        self.notebook.set_current_page(0)
+
+        table.show()
+        window.show()
+
+def main():
+    gtk.main()
+    return 0
+
+if __name__ == "__main__":
+    NotebookExample()
+    main()

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Group Management
+Exec=gksu group-management
+Icon=config-users
+Terminal=false
+Type=Application
+Categories=Settings;
+NoDisplay=True
