@@ -1,3 +1,15 @@
+group-management-antix (0.2.4) unstable; urgency=medium
+
+  * bump version
+
+ -- anticapitalista <antix@operamail.com>  Sun, 08 Oct 2017 19:13:11 +0300
+
+group-management-antix (0.2.3) unstable; urgency=medium
+
+  * Show in Applications menu 
+
+ -- anticapitalista <antix@operamail.com>  Sat, 07 Oct 2017 18:09:35 +0300
+
 group-management-antix (0.2.2) unstable; urgency=low 
  
   * Added German

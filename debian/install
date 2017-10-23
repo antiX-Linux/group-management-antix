@@ -1,3 +1,5 @@
-group-management.desktop 	usr/share/applications/antix
-GM-set 				usr/local/bin
-group-management 		usr/local/bin
+group-management.desktop  /usr/share/applications/antix
+changelog.gz              /usr/share/doc/group-management-antix
+copyright                 /usr/share/doc/group-management-antix
+GM-set                    /usr/local/bin
+group-management          /usr/local/bin
